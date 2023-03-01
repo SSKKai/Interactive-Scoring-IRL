@@ -1,0 +1,57 @@
+experiment:
+  env_type: metaworld
+  episode_len: 300
+  max_episodes: 2000
+  wandb_log: false
+  seed: 1000
+  change_flag_reward: 1000
+  description: running buttonpress task in metaworld with 500 scores
+
+
+sac:
+  policy: Gaussian #Policy Type: Gaussian | Deterministic (default: Gaussian)
+  eval: true #Evaluates a policy a policy every 10 episode (default: True)
+  eval_per_episode: 100 #evaluate policy per episode
+  eval_episodes: 20 #number of evaluate episodes
+  gamma: 0.99
+  tau: 0.005 #target smoothing coefficient(τ) (default: 0.005)
+  lr: 0.0003
+  alpha: 0.2 #Temperature parameter α determines the relative importance of the entropy term against the reward (default: 0.2)
+  automatic_entropy_tuning: true #Automaically adjust α (default: False)
+  seed: 123456 #random seed (default: 123456)
+  batch_size: 256
+  hidden_size: 256
+  updates_per_step: 1 #model updates per simulator step (default: 1)
+  start_steps: 10000
+  start_episodes: 20
+  pretrain_episodes: 0
+  target_update_interval: 1 #Value target update per no. of updates per step (default: 1)
+  replay_size: 1000000  #size of replay buffer (default: 10000000)
+  cuda: true
+
+reward:
+  sample_method: random sample # random sample / distance sample / state entropy sample
+  padding_mask_method: zeros pad normal mask # zeros pad normal/shortest mask, last n/edge pad no mask
+  label_type: adaptive #onehot / smoothing (0.1) / adaptive
+  make_batch_method: difference # random / priority / priority random / difference / hybrid
+  priority_alpha: 3 # alpha for prioritized sampling, 0 for random sample
+  entropy_alpha: 2 # alpha for entropy sampling, 0 for random sample
+  new_bonus: 0 # prob bonus for new added trajs
+  rank_by_true_reward: true
+  rank_noise: 0 # noise = N(0,rank_noise^2)
+  half_precision: false # 0.5 precision
+  state_only: false #the reward net is r(s,a) or r(s)
+  hidden_dim: 256 #hidden dim for reward network
+  negative_network_output: false
+  learn_reward_frequency_1: 10 #learn reward per N episodes
+  num_to_rank_1: 10 #num to rank per reward update
+  learn_reward_frequency: 100 #learn reward per N episodes
+  num_to_rank: 20 #num to rank per reward update
+  max_rank_num: 500
+  traj_capacity: 200 #trajectory capacity of reward buffer
+  lr: 0.001
+  equal: 0.2
+
+env:
+  task: button-press-v2
+  render: false
