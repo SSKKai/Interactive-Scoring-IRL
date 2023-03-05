@@ -8,3 +8,4 @@ pyquaternion>=0.9.9
 scipy>=1.8.0
 pandas>=1.4.1
 proplot>=0.9.5
+similaritymeasures>=0.7.0

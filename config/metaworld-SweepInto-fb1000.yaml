@@ -5,6 +5,7 @@ experiment:
   wandb_log: false
   seed: 1000
   change_flag_reward: 1000
+  real_human_experiment: false
   description: running sweepinto task in metaworld with 1000 scores
 
 sac:
@@ -36,7 +37,6 @@ reward:
   priority_alpha: 3 # alpha for prioritized sampling, 0 for random sample
   entropy_alpha: 2 # alpha for entropy sampling, 0 for random sample
   new_bonus: 0 # prob bonus for new added trajs
-  rank_by_true_reward: true
   rank_noise: 0 # noise = N(0,rank_noise^2)
   half_precision: false # 0.5 precision
   state_only: false #the reward net is r(s,a) or r(s)

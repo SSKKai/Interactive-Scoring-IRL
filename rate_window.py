@@ -4,13 +4,14 @@ from PyQt5.QtWidgets import QApplication,QMainWindow
 from PyQt5.QtMultimedia import QMediaContent, QMediaPlayer, QMediaPlaylist
 from PyQt5.QtCore import QDir, QUrl
 from PyQt5.QtTest import QTest
+import os
 
 class RatingWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(RatingWindow,self).__init__(parent)
         self.setupUi(self)
 
-        self.fileRoot = '/home/sskk/Repo/off-policy-scoring-based-RL/videos/'
+        self.fileRoot = os.path.dirname(__file__)+'/videos/'
         self.fileType = '.avi'
         self.video_num = 0
         self.referenceVideoWidgets = [self.rv_widget_1, self.rv_widget_2, self.rv_widget_3, self.rv_widget_4]

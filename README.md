@@ -12,6 +12,14 @@ We use hydra to manage our configs:
 ```
 pip install hydra-core --upgrade
 ```
+We use pyqt5 to create our scoring GUI:
+```
+pip install pyqt5
+pip install pyqt5-tools
+```
+This repo only support conducting real human experiment in Metaworld environments.
+
+It seems that pyqt5 may conflict with RLBench(Coppeliasim), so if you want to try real human experiment, you may need to delete qt5 python package and remove `export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libGLEW.so` in your `~/.bashrc` file for saving the reference videos.
 
 Others requirements are listed in `requirements.txt`
 

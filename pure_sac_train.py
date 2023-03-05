@@ -6,7 +6,6 @@ import itertools
 import torch
 from sac import SAC
 from utils import get_wandb_config, set_seeds
-# from torch.utils.tensorboard import SummaryWriter
 from replay_memory import ReplayMemory
 from reward_net import RewardNetwork
 import glfw

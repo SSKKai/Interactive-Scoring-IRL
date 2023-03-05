@@ -15,10 +15,6 @@ import heapq
 import similaritymeasures
 from model import TorchRunningMeanStd
 
-from rate_window import RatingWindow
-import sys
-from PyQt5.QtWidgets import QApplication,QMainWindow
-
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -69,7 +65,6 @@ class RewardNetwork(object):
         self.env_type = env_type
         
         self.state_only = args.state_only
-        self.rank_by_true_reward = args.rank_by_true_reward
         self.new_trajectory = True
         self.new_reward_traj = True
         
@@ -169,9 +164,8 @@ class RewardNetwork(object):
             if len(self.buffer) > self.traj_capacity:
                 self.buffer = self.buffer[1:]
                 self.index_buffer = self.index_buffer[1:]
-        
-        if self.rank_by_true_reward:
-            self.add_true_reward(reward, done)
+
+        self.add_true_reward(reward, done)
     
     def add_true_reward (self, reward, done):
         if self.new_reward_traj:
@@ -187,92 +181,97 @@ class RewardNetwork(object):
     def auto_get_label(self, rank_index):
         rank_label = []
         rank_label_true = []
-        if self.rank_by_true_reward:
-            for idx in rank_index:
-                total_reward = sum(self.true_reward_buffer[idx])
-                rank_base = total_reward/self.episode_length
+        for idx in rank_index:
+            total_reward = sum(self.true_reward_buffer[idx])
+            rank_base = total_reward/self.episode_length
 
-                ##################### rlbench #########################
-                if self.env_type == 'rlbench':
-                    if rank_base <= -3.2:  # closemicrowave/pushbutton vertically: (-)3.2 / pushbutton horizontally: (-)1.8
-                        rank = 0
+            ##################### rlbench #########################
+            if self.env_type == 'rlbench':
+                if rank_base <= -3.2:  # closemicrowave/pushbutton vertically: (-)3.2 / pushbutton horizontally: (-)1.8
+                    rank = 0
+                else:
+                    rank = (rank_base/1.8 + 1)*10
+                rank_label_true.append(rank)
+
+            ##################### mujoco #########################
+            elif self.env_type == 'mujoco':
+                if rank_base <= -1.5:
+                    rank = 0
+                elif -1.5 < rank_base <= 0:
+                    rank = 2*(rank_base+1.5)/1.5
+                elif total_reward > 0:
+                    rank = 2 + 8*rank_base/5
+                rank_label_true.append(rank)
+
+                # add score noise
+                if self.rank_noise > 0:
+                    rank = rank + np.random.normal(0, self.rank_noise)
+                # .5 precision
+                if self.half_precision:
+                    if abs(rank - np.round(rank)) < 0.25:
+                        rank = np.round(rank)
                     else:
-                        rank = (rank_base/1.8 + 1)*10
-                    rank_label_true.append(rank)
-
-                ##################### mujoco #########################
-                elif self.env_type == 'mujoco':
-                    if rank_base <= -1.5:
-                        rank = 0
-                    elif -1.5 < rank_base <= 0:
-                        rank = 2*(rank_base+1.5)/1.5
-                    elif total_reward > 0:
-                        rank = 2 + 8*rank_base/5
-                    rank_label_true.append(rank)
-
-                    # add score noise
-                    if self.rank_noise > 0:
-                        rank = rank + np.random.normal(0, self.rank_noise)
-                    # .5 precision
-                    if self.half_precision:
-                        if abs(rank - np.round(rank)) < 0.25:
-                            rank = np.round(rank)
-                        else:
-                            rank = np.floor(rank) + 0.5
-                        # limit
-                        # rank = max(rank, 0)
-                        # rank = min(rank, 10)
+                        rank = np.floor(rank) + 0.5
+                    # limit
+                    # rank = max(rank, 0)
+                    # rank = min(rank, 10)
 
 
-                ##################### metaworld #########################
-                elif self.env_type == 'metaworld':
-                    if rank_base <= -1.5:
-                        rank = 0
-                    elif -1.5 < rank_base <= 0:
-                        rank = 2*(rank_base+1.5)/1.5
-                    elif total_reward > 0:
-                        rank = 2 + 8*rank_base/5
-                    rank_label_true.append(rank)
+            ##################### metaworld #########################
+            elif self.env_type == 'metaworld':
+                if rank_base <= -1.5:
+                    rank = 0
+                elif -1.5 < rank_base <= 0:
+                    rank = 2*(rank_base+1.5)/1.5
+                elif total_reward > 0:
+                    rank = 2 + 8*rank_base/5
+                rank_label_true.append(rank)
 
-                    # add score noise
-                    if self.rank_noise > 0:
-                        rank = rank + np.random.normal(0, self.rank_noise)
-                    # .5 precision
-                    if self.half_precision:
-                        if abs(rank - np.round(rank)) < 0.25:
-                            rank = np.round(rank)
-                        else:
-                            rank = np.floor(rank) + 0.5
-                        # limit
-                        # rank = max(rank, 2)
-                        # rank = min(rank, 13)
-                #######################################
+                # add score noise
+                if self.rank_noise > 0:
+                    rank = rank + np.random.normal(0, self.rank_noise)
+                # .5 precision
+                if self.half_precision:
+                    if abs(rank - np.round(rank)) < 0.25:
+                        rank = np.round(rank)
+                    else:
+                        rank = np.floor(rank) + 0.5
+                    # limit
+                    # rank = max(rank, 2)
+                    # rank = min(rank, 13)
+            #######################################
 
-                rank_label.append(rank)
+            rank_label.append(rank)
         return rank_label, rank_label_true
 
     def manual_get_reference(self, rank_index):
         rank_references = []
         _, rank_label_true = self.auto_get_label(rank_index)
-        distance_reference_trajs = self.cartesian_ranked_trajs[-100:]
-        ranked_predicted_rewards = self.reward_network(torch.from_numpy(np.array(self.ranked_trajs)).float().to(self.device)).cpu().squeeze(dim=-1).sum(axis=1)
+        if len(self.ranked_labels) > 0:
+            distance_reference_trajs = self.cartesian_ranked_trajs[-100:]
+            ranked_predicted_rewards = self.reward_network(torch.from_numpy(np.array(self.ranked_trajs)).float().to(self.device)).cpu().squeeze(dim=-1).sum(axis=1)
         for n,idx in enumerate(rank_index):
             rank_traj_number = self.index_buffer[idx]
 
-            traj_need_to_rank = np.array(self.buffer[idx])[:,0:3]
-            traj_distance_ls = [similaritymeasures.dtw(traj_need_to_rank, traj)[0] for traj in distance_reference_trajs]
-            min_distance_index = list(map(traj_distance_ls.index, heapq.nsmallest(2,traj_distance_ls)))
-            if len(self.cartesian_ranked_trajs) > len(distance_reference_trajs):
-                min_distance_index = [index+len(self.cartesian_ranked_trajs)-100 for index in min_distance_index]
+            if len(self.ranked_labels) > 0:
+                traj_need_to_rank = np.array(self.buffer[idx])[:,0:3]
+                traj_distance_ls = [similaritymeasures.dtw(traj_need_to_rank, traj)[0] for traj in distance_reference_trajs]
+                min_distance_index = list(map(traj_distance_ls.index, heapq.nsmallest(2,traj_distance_ls)))
+                if len(self.cartesian_ranked_trajs) > len(distance_reference_trajs):
+                    min_distance_index = [index+len(self.cartesian_ranked_trajs)-100 for index in min_distance_index]
 
-            rank_traj_predicted_reward = self.reward_network(torch.from_numpy(np.array(self.buffer[idx])).float().to(self.device)).cpu().squeeze(dim=-1).sum()
-            reward_distance_ls = [abs(ranked_reward-rank_traj_predicted_reward) for ranked_reward in ranked_predicted_rewards]
-            min_reward_index = list(map(reward_distance_ls.index, heapq.nsmallest(2,reward_distance_ls)))
+                rank_traj_predicted_reward = self.reward_network(torch.from_numpy(np.array(self.buffer[idx])).float().to(self.device)).cpu().squeeze(dim=-1).sum()
+                reward_distance_ls = [abs(ranked_reward-rank_traj_predicted_reward) for ranked_reward in ranked_predicted_rewards]
+                min_reward_index = list(map(reward_distance_ls.index, heapq.nsmallest(2,reward_distance_ls)))
 
-            min_index = min_distance_index + min_reward_index
-            min_index = [i for n, i in enumerate(min_index) if i not in min_index[:n]]
-            ref_labels_ls = [self.ranked_labels[i] for i in min_index]
-            ref_traj_number_ls = [self.ranked_index[i] for i in min_index]
+                min_index = min_distance_index + min_reward_index
+                min_index = [i for n, i in enumerate(min_index) if i not in min_index[:n]]
+                ref_labels_ls = [self.ranked_labels[i] for i in min_index]
+                ref_traj_number_ls = [self.ranked_index[i] for i in min_index]
+
+            else:
+                ref_labels_ls = []
+                ref_traj_number_ls = []
 
             rank_references.append([rank_traj_number,ref_traj_number_ls,ref_labels_ls,rank_label_true[n]])
 
@@ -323,9 +322,7 @@ class RewardNetwork(object):
 
             self.buffer = [self.buffer[i] for i in range(len(self.buffer)) if (i not in rank_index)]
             self.index_buffer = [self.index_buffer[i] for i in range(len(self.index_buffer)) if (i not in rank_index)]
-            if self.rank_by_true_reward:
-                self.true_reward_buffer = [self.true_reward_buffer[i] for i in range(len(self.true_reward_buffer))
-                                           if (i not in rank_index)]
+            self.true_reward_buffer = [self.true_reward_buffer[i] for i in range(len(self.true_reward_buffer)) if (i not in rank_index)]
 
             if ref_label_change is not None:
                 for i in range(len(ref_label_change[0])):

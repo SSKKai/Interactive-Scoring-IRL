@@ -5,6 +5,7 @@ experiment:
   wandb_log: false
   seed: 1000
   change_flag_reward: 1000
+  real_human_experiment: false
   description: running buttonpress task in metaworld with 500 scores
 
 
@@ -12,7 +13,7 @@ sac:
   policy: Gaussian #Policy Type: Gaussian | Deterministic (default: Gaussian)
   eval: true #Evaluates a policy a policy every 10 episode (default: True)
   eval_per_episode: 100 #evaluate policy per episode
-  eval_episodes: 20 #number of evaluate episodes
+  eval_episodes: 3 #number of evaluate episodes
   gamma: 0.99
   tau: 0.005 #target smoothing coefficient(τ) (default: 0.005)
   lr: 0.0003
@@ -37,7 +38,6 @@ reward:
   priority_alpha: 3 # alpha for prioritized sampling, 0 for random sample
   entropy_alpha: 2 # alpha for entropy sampling, 0 for random sample
   new_bonus: 0 # prob bonus for new added trajs
-  rank_by_true_reward: true
   rank_noise: 0 # noise = N(0,rank_noise^2)
   half_precision: false # 0.5 precision
   state_only: false #the reward net is r(s,a) or r(s)

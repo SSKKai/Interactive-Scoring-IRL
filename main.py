@@ -9,29 +9,17 @@ from utils import get_wandb_config, set_seeds
 from replay_memory import ReplayMemory
 from reward_net import RewardNetwork
 import glfw
+import os
 
-# import env
-# import gym  # mujoco
-# # from custom_env import CustomEnv  # RLBench
-# import metaworld.envs.mujoco.env_dict as _env_dict  # metaworld
-
-# import config and logger
+# config and logger
 import hydra
 import wandb
-# import cv2
-
-import sys
-from PyQt5.QtWidgets import QApplication
-from rate_window import RatingWindow
-
 
 class OPRRL(object):
     def __init__(self, config):
 
         import gym  # mujoco
-        # from custom_env import CustomEnv  # RLBench
         import metaworld.envs.mujoco.env_dict as _env_dict  # metaworld
-        import cv2
 
         # Configurations
         self.sac_hyparams = config.sac
@@ -43,13 +31,16 @@ class OPRRL(object):
         self.max_episodes = config.experiment.max_episodes
         self.seeds = config.experiment.seed
         self.change_flag_reward = config.experiment.change_flag_reward
+        self.real_human_exp = config.experiment.real_human_experiment
 
         # Environment
         self.env_type = config.experiment.env_type
 
+        # rlbench may conflict with pyqt5
         # if self.env_type == "rlbench":
-        #     self.env = CustomEnv(self.env_config)
-        #     self.env.reset()
+            # from custom_env import CustomEnv
+            # self.env = CustomEnv(self.env_config)
+            # self.env.reset()
 
         if self.env_type == "mujoco":
             if self.env_config.terminate_when_unhealthy is None:
@@ -107,19 +98,23 @@ class OPRRL(object):
         self.e_reward_prime_list = []
         self.episode_len_list = []
 
-        self.resolution = (640,480)
-        self.fourcc = cv2.VideoWriter_fourcc('M','J','P','G')
-        self.fps = self.env.metadata['video.frames_per_second']/2
-
         self.is_stop_reward_learning = False
         self.is_stop_training = False
-        self.rate_ui = RatingWindow()
-        self.rate_ui.start_pushButton.clicked.connect(self.train)
-        self.rate_ui.stop_reward_pushButton.clicked.connect(self.stop_reward_learning)
-        self.rate_ui.stop_training_pushButton.clicked.connect(self.stop_training)
-        self.rate_ui.pushButton_save_reward.clicked.connect(self.ui_save_reward)
-        self.rate_ui.pushButton_save_agent.clicked.connect(self.ui_save_agent)
-        self.rate_ui.show()
+        if self.real_human_exp:
+            import cv2
+            self.resolution = (640, 480)
+            self.fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+            self.fps = self.env.metadata['video.frames_per_second'] / 2
+            if not os.path.exists('videos/'):
+                os.makedirs('videos/')
+
+            self.rate_ui = RatingWindow()
+            self.rate_ui.start_pushButton.clicked.connect(self.train)
+            self.rate_ui.stop_reward_pushButton.clicked.connect(self.stop_reward_learning)
+            self.rate_ui.stop_training_pushButton.clicked.connect(self.stop_training)
+            self.rate_ui.pushButton_save_reward.clicked.connect(self.ui_save_reward)
+            self.rate_ui.pushButton_save_agent.clicked.connect(self.ui_save_agent)
+            self.rate_ui.show()
 
     def stop_reward_learning(self):
         self.is_stop_reward_learning = True
@@ -147,9 +142,6 @@ class OPRRL(object):
             done = False
             episode_steps = 0
             while not done:
-                if self.env_type == "mujoco" or self.env_type == 'metaworld':
-                    if self.env_config.render:
-                        self.env.render()
                 action = self.agent.select_action(state, evaluate=evaluate_mode)
                 next_state, reward, done, _ = self.env.step(action)
                 # reward_prime = self.reward_network.get_reward(state, action).detach().cpu().numpy()[0]
@@ -192,7 +184,9 @@ class OPRRL(object):
         print_flag = 0
 
         for self.i_episode in itertools.count(1):
-            QApplication.processEvents()
+            if self.real_human_exp:
+                QApplication.processEvents()
+                video_writer = cv2.VideoWriter(f'videos/{self.i_episode}.avi', self.fourcc, self.fps, self.resolution)  # 'M','J','P','G' / 'X', 'V', 'I', 'D'
             episode_reward = 0
             episode_reward_prime = 0
             episode_steps = 0
@@ -202,7 +196,7 @@ class OPRRL(object):
             episode_flag = 0
             episode_succ = False
 
-            video_writer = cv2.VideoWriter(f'videos/{self.i_episode}.avi', self.fourcc, self.fps, self.resolution)  # 'M','J','P','G' / 'X', 'V', 'I', 'D'
+
 
             #############################################################################
             ############################ step session start #############################
@@ -234,8 +228,13 @@ class OPRRL(object):
                 next_state, reward, done, info = self.env.step(action)
                 reward_prime = self.reward_network.get_reward(state, action).detach().cpu().numpy()[0]
 
-                if episode_steps % 6 == 0:
-                    video_writer.write(self.env.render(offscreen=True, camera_name='corner2', resolution=self.resolution)[:,:,::-1])
+                if self.real_human_exp:
+                    if episode_steps % 6 == 0:
+                        video_writer.write(self.env.render(offscreen=True, camera_name='corner2', resolution=self.resolution)[:,:,::-1])
+                else:
+                    if self.env_type == "mujoco" or self.env_type == 'metaworld':
+                        if self.env_config.render:
+                            self.env.render()
 
                 if self.env_type == 'metaworld' and episode_flag == 0:
                     if info['success']:
@@ -261,7 +260,8 @@ class OPRRL(object):
             #############################################################################
             ############################## step session end #############################
             #############################################################################
-            video_writer.release()
+            if self.real_human_exp:
+                video_writer.release()
 
             if self.wandb_log:
                 if self.env_type == "mujoco":
@@ -300,11 +300,13 @@ class OPRRL(object):
             
             # learn reward
             if self.i_episode % learn_frequency == 0 and self.rank_num <= self.reward_hyparams.max_rank_num and not self.is_stop_reward_learning:
-                if self.i_episode > 10:
-                    self.reward_network.test_flag = True
+                # if self.i_episode > 10:
+                #     self.real_human_exp = True
+                # else:
+                #     self.real_human_exp = False
 
                 rank_index = self.reward_network.get_trajs_to_rank(num_to_rank)
-                if self.reward_network.test_flag:
+                if self.real_human_exp:
                     rank_references = self.reward_network.manual_get_reference(rank_index)
                     rank_label, rank_label_true, ref_label_change, skip_index = self.rate_ui.rate_trajectory(rank_references)
                 else:
@@ -350,24 +352,24 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config-name', default="metaworld-ButtonPress-fb300",
-                        help='Please specify the config name (default: mujoco-HalfCheetah-fb250)') #metaworld-ButtonPress-fb300
+                        help='Please specify the config name (default: metaworld-ButtonPress-fb300)') #metaworld-ButtonPress-fb300
     args = parser.parse_args()
 
     with hydra.initialize(config_path="config"):
         config = hydra.compose(config_name=args.config_name)
     print(config.experiment.description)
-    app = QApplication(sys.argv)
 
-    # oprrl = OPRRL(config)
-    # sys.exit(app.exec())
+    if config.experiment.real_human_experiment:
+        import sys
+        from PyQt5.QtWidgets import QApplication
+        from rate_window import RatingWindow
+        app = QApplication(sys.argv)
+        oprrl = OPRRL(config)
+        sys.exit(app.exec())
+    else:
+        oprrl = OPRRL(config)
+        oprrl.train()
 
-
-    # oprrl.train()
-
-    # app = QApplication(sys.argv)
-    # ui = RatingWindow()
-    # ui.show()
-    # sys.exit(app.exec())
 
 
 

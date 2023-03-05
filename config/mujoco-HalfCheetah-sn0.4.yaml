@@ -5,6 +5,7 @@ experiment:
   wandb_log: false
   seed: 1000
   change_flag_reward: 500
+  real_human_experiment: false
   description: running HalfCheetah-v2 task in mujoco with 0.4 scoring noise and 0.5 scoring precision
 
 
@@ -37,7 +38,6 @@ reward:
   priority_alpha: 3 # alpha for prioritized sampling, 0 for random sample
   entropy_alpha: 2 # alpha for entropy sampling, 0 for random sample
   new_bonus: 0 # prob bonus for new added trajs
-  rank_by_true_reward: true
   rank_noise: 0.4 # noise = N(0,rank_noise^2)
   half_precision: true # 0.5 precision
   state_only: false #the reward net is r(s,a) or r(s)
