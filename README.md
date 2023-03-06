@@ -40,13 +40,20 @@ We use wandb to log our experiments data, if you want to use it, please change t
 
 We use slightly customized environments for the experiments in RLBench simulator. For the usage of RLBench, you can check https://github.com/SSKKai/RLBench-SAC-with-DenseReward
 
+## Real Human Experiment
+We design a scoring GUI for real human experiments. You can try it by running:
+```
+python main.py --config-name metaworld-ButtonPress-realhuman
+```
+![image](GUI_screenshot.png)
+
 ## Results
 
 We use **wandb** to log our experiment data, you can see them in the following link:
 
 *   [Metaworld ButtonPress with Scoring Noise and 0.5 Scoring Precision](https://wandb.ai/sskk/OPRRL-Metaworld-ButtonPress-Scoring-Noise?workspace=user-sskk)
 *   [Mujoco HalfCheetah with Scoring Noise and 0.5 Scoring Precision](https://wandb.ai/sskk/OPRRL-Mujoco-HalfCheetah-with-Scoring-Noise?workspace=user-sskk)
-*   [Metaworld ButtonPress Comparison Experiments](https://wandb.ai/sskk/OPRRL-Metaworld-ButtonPress-Comparison-Experiments?workspace=user-sskk)
+*   [Metaworld ButtonPress Comparison Experiments (including real human experiments)](https://wandb.ai/sskk/OPRRL-Metaworld-ButtonPress-Comparison-Experiments?workspace=user-sskk)
 *   [Metaworld SweepInto Comparison Experiments](https://wandb.ai/sskk/OPRRL-Metaworld-SweepInto-Comparison-Experiments?workspace=user-sskk)
 *   [Mujoco HalfCheetah Comparison Experiments](https://wandb.ai/sskk/OPRRL-Mujoco-HalfCheetah-Comparison-Experiments?workspace=user-sskk)
 *   [Mujoco Ant Comparison Experiments](https://wandb.ai/sskk/OPRRL-Mujoco-Ant-Comparison-Experiments?workspace=user-sskk)
