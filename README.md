@@ -1,3 +1,7 @@
+## Description
+
+Implementation of **Boosting Feedback Efficiency of Interactive Reinforcement Learning by Adaptive Learning from Scores**.
+
 ## Requirements
 
 *   [PyTorch](http://pytorch.org/)
@@ -8,11 +12,11 @@ Optional Environments:
 *   [Metaworld](https://github.com/rlworkgroup/metaworld)
 *   [RLBench](https://github.com/stepjam/RLBench)
 
-We use hydra to manage our configs:
+We use **hydra** to manage our configs:
 ```
 pip install hydra-core --upgrade
 ```
-We use pyqt5 to create our scoring GUI:
+We use **pyqt5** to create our scoring GUI:
 ```
 pip install pyqt5
 pip install pyqt5-tools
@@ -24,7 +28,7 @@ It seems that pyqt5 may conflict with RLBench(Coppeliasim), so if you want to tr
 Others requirements are listed in `requirements.txt`
 
 ## Usage
-We use `hydra` and `.yaml` file to manage our hypermaraters. We listed the config file in `\config` for different experiments.
+We use **hydra** to manage our hypermaraters. We listed the config file in `\config` for different experiments.
 To run them, just specify the `CONFIG_NAME`. For example: `--config-name mujoco-HalfCheetah-fb250` or `--config-name metaworld-ButtonPress-fb500`.
 ```
 python main.py [--config-name CONFIG_NAME]
@@ -38,7 +42,7 @@ We use slightly customized environments for the experiments in RLBench simulator
 
 ## Results
 
-We use wandb to log our experiment data, you can see them in the following link:
+We use **wandb** to log our experiment data, you can see them in the following link:
 
 *   [Metaworld ButtonPress with Scoring Noise and 0.5 Scoring Precision](https://wandb.ai/sskk/OPRRL-Metaworld-ButtonPress-Scoring-Noise?workspace=user-sskk)
 *   [Mujoco HalfCheetah with Scoring Noise and 0.5 Scoring Precision](https://wandb.ai/sskk/OPRRL-Mujoco-HalfCheetah-with-Scoring-Noise?workspace=user-sskk)
@@ -46,5 +50,12 @@ We use wandb to log our experiment data, you can see them in the following link:
 *   [Metaworld SweepInto Comparison Experiments](https://wandb.ai/sskk/OPRRL-Metaworld-SweepInto-Comparison-Experiments?workspace=user-sskk)
 *   [Mujoco HalfCheetah Comparison Experiments](https://wandb.ai/sskk/OPRRL-Mujoco-HalfCheetah-Comparison-Experiments?workspace=user-sskk)
 *   [Mujoco Ant Comparison Experiments](https://wandb.ai/sskk/OPRRL-Mujoco-Ant-Comparison-Experiments?workspace=user-sskk)
+
+
+## Acknowledgement
+
+This repo is based on the [pytorch-soft-actor-critic](https://github.com/pranz24/pytorch-soft-actor-critic/tree/SAC_V).
+
+We use the repo [similarity_measures](https://github.com/cjekel/similarity_measures) to compute the DTW trajectory distance.
 
 
